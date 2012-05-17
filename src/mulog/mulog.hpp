@@ -31,24 +31,24 @@
           mulog::log_header({mulog::s, mulog::type::log, \
           __PRETTY_FUNCTION__,__FILE__,__LINE__,t})))
 
-#define LBLOCK_BEGIN(l) ((l).dispatch_log_message(\
+#define LBLOCK_BEGIN(l) (*(l.dispatch_log_message(\
           mulog::log_header({mulog::info, mulog::type::block_begin, \
-          __PRETTY_FUNCTION__,__FILE__,__LINE__,"__block_begin"})))
-#define LBLOCK_END(L) ((l).dispatch_log_message(\
+          __PRETTY_FUNCTION__,__FILE__,__LINE__,"__block_begin"}))))
+#define LBLOCK_END(L) (*(l.dispatch_log_message(\
           mulog::log_header({mulog::info, mulog::type::block_end, \
-          __PRETTY_FUNCTION__,__FILE__,__LINE__,"__block_end"})))
-#define LHEADER(l) ((l).dispatch_log_message(\
+          __PRETTY_FUNCTION__,__FILE__,__LINE__,"__block_end"}))))
+#define LHEADER(l) (*(l.dispatch_log_message(\
           mulog::log_header({mulog::info, mulog::type::header, \
-          __PRETTY_FUNCTION__,__FILE__,__LINE__,"__header"})))
-#define LINFO(l) ((l).dispatch_log_message(mulog::log_header(\
+          __PRETTY_FUNCTION__,__FILE__,__LINE__,"__header"}))))
+#define LINFO(l) (*(l.dispatch_log_message(mulog::log_header(\
           {mulog::info, mulog::type::log, \
-          __PRETTY_FUNCTION__,__FILE__,__LINE__,""})))
-#define LLOG(l,s) ((l).dispatch_log_message(mulog::log_header(\
+          __PRETTY_FUNCTION__,__FILE__,__LINE__,""}))))
+#define LLOG(l,s) (*(l.dispatch_log_message(mulog::log_header(\
           {mulog::s, mulog::type::log, \
-          __PRETTY_FUNCTION__,__FILE__,__LINE__,""})))
-#define LLOG_TAG(l,s,t) ((l).dispatch_log_message(mulog::log_header(\
+          __PRETTY_FUNCTION__,__FILE__,__LINE__,""}))))
+#define LLOG_TAG(l,s,t) (*(l.dispatch_log_message(mulog::log_header(\
           {mulog::s, mulog::type::log, \
-          __PRETTY_FUNCTION__,__FILE__,__LINE__,t})))
+          __PRETTY_FUNCTION__,__FILE__,__LINE__,t}))))
 
 #define MU_RESET   "\033[0m"
 #define MU_BLACK   "\033[30m"      /* Black */
