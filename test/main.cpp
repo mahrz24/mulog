@@ -28,7 +28,11 @@ int main(int argc, char *argv[])
 
   HEADER << "Hello World";
 
-  INFO << "Test " << mulog::format::column << mulog::endl << std::vector<int>({1,2,3}) << mulog::format::row << std::vector<int>({1,2,3});
+  INFO << "Test " << mulog::endl << mulog::format::red
+       << mulog::format::bold
+       << mulog::format::column << std::vector<int>({1,2,3})
+       << mulog::format::normal << mulog::format::green
+       << mulog::format::row << std::vector<int>({1,2,3});
 
   BLOCK_END;
 

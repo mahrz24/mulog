@@ -107,6 +107,17 @@ namespace mulog
     };
   }
 
+  enum color
+  {
+    black,
+    red,
+    green,
+    blue,
+    yellow,
+    cyan,
+    magenta
+  };
+
   namespace format
   {
     enum log_format
@@ -205,7 +216,8 @@ namespace mulog
   {
     void write(const std::string& s) { std::cout << s; }
     std::ostream& dev_stream() { return std::cout; }
-    void flush() {};
+    void flush() {}
+    bool can_colors() { return true; }
   };
 
   struct file_device
@@ -216,13 +228,14 @@ namespace mulog
     void write(const std::string& s) { file << s; }
     std::ostream& dev_stream() { return file; }
     void flush() { file.flush(); };
+    bool can_colors() { return false; }
   private:
     std::ofstream file;
   };
 
   struct transformer
   {
-    transformer() : row_vectors(true) {};
+    transformer() : row_vectors(true), text_color(black), bold(false) {};
 
     virtual void begin_log(const log_header& h) = 0;
     virtual void end_log() = 0;
@@ -231,6 +244,7 @@ namespace mulog
     virtual void log(const std::vector<std::string>& s) = 0;
     // Log special characters
     virtual void log_endl() = 0;
+    virtual void format_change() = 0;
 
     void log(const special_char_endl& c)
     {
@@ -248,7 +262,35 @@ namespace mulog
         case format::column:
           row_vectors = false;
           break;
+        case format::bold:
+          bold = true;
+          break;
+        case format::normal:
+          bold = false;
+          break;
+        case format::black:
+          text_color = black;
+          break;
+        case format::red:
+          text_color = red;
+          break;
+        case format::green:
+          text_color = green;
+          break;
+        case format::blue:
+          text_color = blue;
+          break;
+        case format::yellow:
+          text_color = yellow;
+          break;
+        case format::cyan:
+          text_color = cyan;
+          break;
+        case format::magenta:
+          text_color = magenta;
+          break;
       }
+      format_change();
     }
 
     template<typename T>
@@ -274,6 +316,8 @@ namespace mulog
       log(v);
     }
 
+    color text_color;
+    bool bold;
     bool row_vectors;
   };
 
@@ -361,6 +405,67 @@ namespace mulog
       }
     }
 
+    void format_change()
+    {
+      if(dev.can_colors())
+      {
+        if(bold)
+        {
+          switch(text_color)
+          {
+            case black:
+              std::cout << MU_BOLDBLACK;
+              break;
+            case red:
+              std::cout << MU_BOLDRED;
+              break;
+            case green:
+              std::cout << MU_BOLDGREEN;
+              break;
+            case blue:
+              std::cout << MU_BOLDBLUE;
+              break;
+            case cyan:
+              std::cout << MU_BOLDCYAN;
+              break;
+            case magenta:
+              std::cout << MU_BOLDMAGENTA;
+              break;
+            case yellow:
+              std::cout << MU_BOLDYELLOW;
+              break;
+          }
+        }
+        else
+        {
+          switch(text_color)
+          {
+            case black:
+              std::cout << MU_BLACK;
+              break;
+            case red:
+              std::cout << MU_RED;
+              break;
+            case green:
+              std::cout << MU_GREEN;
+              break;
+            case blue:
+              std::cout << MU_BLUE;
+              break;
+            case cyan:
+              std::cout << MU_CYAN;
+              break;
+            case magenta:
+              std::cout << MU_MAGENTA;
+              break;
+            case yellow:
+              std::cout << MU_YELLOW;
+              break;
+          }
+        }
+      }
+    }
+
     void log_endl() { dev.dev_stream() << std::endl; }
     void log(const std::string& s) { dev.write(s); }
     void log(const std::vector<std::string>& s) 
@@ -377,6 +482,11 @@ namespace mulog
 
     void end_log()
     {
+      if(dev.can_colors())
+      {
+        std::cout << MU_RESET;
+      }
+
       if(t == type::log)
       {
         dev.dev_stream() << std::endl;
