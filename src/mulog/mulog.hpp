@@ -50,8 +50,25 @@
           {mulog::s, mulog::type::log, \
           __PRETTY_FUNCTION__,__FILE__,__LINE__,t})))
 
+#define MU_RESET   "\033[0m"
+#define MU_BLACK   "\033[30m"      /* Black */
+#define MU_RED     "\033[31m"      /* Red */
+#define MU_GREEN   "\033[32m"      /* Green */
+#define MU_YELLOW  "\033[33m"      /* Yellow */
+#define MU_BLUE    "\033[34m"      /* Blue */
+#define MU_MAGENTA "\033[35m"      /* Magenta */
+#define MU_CYAN    "\033[36m"      /* Cyan */
+#define MU_WHITE   "\033[37m"      /* White */
+#define MU_BOLDBLACK   "\033[1m\033[30m"      /* Bold Black */
+#define MU_BOLDRED     "\033[1m\033[31m"      /* Bold Red */
+#define MU_BOLDGREEN   "\033[1m\033[32m"      /* Bold Green */
+#define MU_BOLDYELLOW  "\033[1m\033[33m"      /* Bold Yellow */
+#define MU_BOLDBLUE    "\033[1m\033[34m"      /* Bold Blue */
+#define MU_BOLDMAGENTA "\033[1m\033[35m"      /* Bold Magenta */
+#define MU_BOLDCYAN    "\033[1m\033[36m"      /* Bold Cyan */
+#define MU_BOLDWHITE   "\033[1m\033[37m"      /* Bold White */
+
 // TODO:
-// * Add headers and blocks
 // * Add additional transformer types (vector<double>, vector<int>, matrices)
 // * Add dispatcher transformers (Eigen -> vector<vector<>> and so on)
 // * Add formatting types
@@ -62,6 +79,10 @@
 
 namespace mulog
 {
+  enum special_char_endl
+  {
+    endl
+  };
 
   enum log_severity
   {
@@ -83,6 +104,24 @@ namespace mulog
       header,
       block_begin,
       block_end
+    };
+  }
+
+  namespace format
+  {
+    enum log_format
+    {
+      row = 0,
+      column,
+      bold,
+      normal,
+      red,
+      green,
+      blue,
+      yellow,
+      cyan,
+      magenta,
+      black
     };
   }
 
@@ -183,18 +222,59 @@ namespace mulog
 
   struct transformer
   {
+    transformer() : row_vectors(true) {};
+
     virtual void begin_log(const log_header& h) = 0;
     virtual void end_log() = 0;
     virtual void log(const std::string& s) = 0;
+    // Log vectors
+    virtual void log(const std::vector<std::string>& s) = 0;
+    // Log special characters
+    virtual void log_endl() = 0;
+
+    void log(const special_char_endl& c)
+    {
+      log_endl();
+    }
+
+    void log(const format::log_format& f)
+    {
+      // Default conversion of logging data
+      switch(f)
+      {
+        case format::row:
+          row_vectors = true;
+          break;
+        case format::column:
+          row_vectors = false;
+          break;
+      }
+    }
 
     template<typename T>
     void log(const T& data)
     {
+      // Default conversion of logging data
       std::stringstream s;
       s << data;
       log(s.str());
     }
 
+    template<typename T>
+    void log(const std::vector<T>& data)
+    {
+      std::vector<std::string> v;
+      // Default conversion of logging data
+      for(const T& x : data)
+      {
+        std::stringstream s;
+        s << x;
+        v.push_back(s.str());
+      }
+      log(v);
+    }
+
+    bool row_vectors;
   };
 
   typedef std::list<std::shared_ptr<transformer>> transformer_list;
@@ -202,7 +282,8 @@ namespace mulog
   template<typename Device, typename Prefix, typename ... DeviceParams>
   struct default_transformer : transformer
   {
-    default_transformer(Prefix p, DeviceParams&... params) : dev(params...), prefix(p) {};
+    default_transformer(Prefix p, DeviceParams&... params) : 
+      dev(params...), prefix(p) {};
 
     void begin_log(const log_header& h)
     {
@@ -280,7 +361,20 @@ namespace mulog
       }
     }
 
+    void log_endl() { dev.dev_stream() << std::endl; }
     void log(const std::string& s) { dev.write(s); }
+    void log(const std::vector<std::string>& s) 
+    {
+      for(std::string e : s)
+      {
+        dev.write(e);
+        if(row_vectors)
+          dev.write(" ");
+        else
+          dev.write("\n");
+      }
+    }
+
     void end_log()
     {
       if(t == type::log)
