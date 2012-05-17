@@ -12,15 +12,45 @@
 #include <iomanip>
 #include <regex>
 
-#define INFO (*mulog::core::get().dispatch_log_message(mulog::log_header({mulog::info, mulog::log, \
+#define BLOCK_BEGIN (*mulog::core::get().dispatch_log_message(\
+          mulog::log_header({mulog::info, mulog::type::block_begin, \
+          __PRETTY_FUNCTION__,__FILE__,__LINE__,"__block_begin"})))
+#define BLOCK_END (*mulog::core::get().dispatch_log_message(\
+          mulog::log_header({mulog::info, mulog::type::block_end, \
+          __PRETTY_FUNCTION__,__FILE__,__LINE__,"__block_end"})))
+#define HEADER (*mulog::core::get().dispatch_log_message(\
+          mulog::log_header({mulog::info, mulog::type::header, \
+          __PRETTY_FUNCTION__,__FILE__,__LINE__,"__header"})))
+#define INFO (*mulog::core::get().dispatch_log_message(\
+          mulog::log_header({mulog::info, mulog::type::log, \
           __PRETTY_FUNCTION__,__FILE__,__LINE__,""})))
-#define LOG(s) (*mulog::core::get().dispatch_log_message(mulog::log_header({mulog::s, mulog::log, \
+#define LOG(s) (*mulog::core::get().dispatch_log_message(\
+          mulog::log_header({mulog::s, mulog::type::log, \
           __PRETTY_FUNCTION__,__FILE__,__LINE__,""})))
-#define LOG_TAG(s,t) (*mulog::core::get().dispatch_log_message(mulog::log_header({mulog::s, mulog::log, \
+#define LOG_TAG(s,t) (*mulog::core::get().dispatch_log_message(\
+          mulog::log_header({mulog::s, mulog::type::log, \
+          __PRETTY_FUNCTION__,__FILE__,__LINE__,t})))
+
+#define LBLOCK_BEGIN(l) ((l).dispatch_log_message(\
+          mulog::log_header({mulog::info, mulog::type::block_begin, \
+          __PRETTY_FUNCTION__,__FILE__,__LINE__,"__block_begin"})))
+#define LBLOCK_END(L) ((l).dispatch_log_message(\
+          mulog::log_header({mulog::info, mulog::type::block_end, \
+          __PRETTY_FUNCTION__,__FILE__,__LINE__,"__block_end"})))
+#define LHEADER(l) ((l).dispatch_log_message(\
+          mulog::log_header({mulog::info, mulog::type::header, \
+          __PRETTY_FUNCTION__,__FILE__,__LINE__,"__header"})))
+#define LINFO(l) ((l).dispatch_log_message(mulog::log_header(\
+          {mulog::info, mulog::type::log, \
+          __PRETTY_FUNCTION__,__FILE__,__LINE__,""})))
+#define LLOG(l,s) ((l).dispatch_log_message(mulog::log_header(\
+          {mulog::s, mulog::type::log, \
+          __PRETTY_FUNCTION__,__FILE__,__LINE__,""})))
+#define LLOG_TAG(l,s,t) ((l).dispatch_log_message(mulog::log_header(\
+          {mulog::s, mulog::type::log, \
           __PRETTY_FUNCTION__,__FILE__,__LINE__,t})))
 
 // TODO:
-// * Add macros for other logger objects
 // * Add headers and blocks
 // * Add additional transformer types (vector<double>, vector<int>, matrices)
 // * Add dispatcher transformers (Eigen -> vector<vector<>> and so on)
@@ -32,28 +62,6 @@
 
 namespace mulog
 {
-  static const std::string html_head(R"(<!doctype html>
-<head>
-  <meta charset="utf-8">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-  <title></title>
-  <meta name="description" content="">
-  <meta name="viewport" content="width=device-width">
-</head>
-<body>
-  <!--[if lt IE 7]><p class=chromeframe>Your browser is <em>ancient!</em> <a href="http://browsehappy.com/">Upgrade to a different browser</a> or <a href="http://www.google.com/chromeframe/?redirect=true">install Google Chrome Frame</a> to experience this site.</p><![endif]-->
-  <header>
-
-  </header>
-  <div role="main">
-
-  </div>
-  <footer>
-
-  </footer>
-</body>
-</html>
-)"); //"
 
   enum log_severity
   {
@@ -67,17 +75,21 @@ namespace mulog
     fatal
   };
 
-  enum log_type
+  namespace type
   {
-    log = 0,
-    trace,
-    redirect
-  };
+    enum log_type
+    {
+      log = 0,
+      header,
+      block_begin,
+      block_end
+    };
+  }
 
   struct log_header
   {
     log_severity severity;
-    log_type type;
+    type::log_type type;
     std::string function;
     std::string file;
     unsigned int loc;
@@ -194,71 +206,103 @@ namespace mulog
 
     void begin_log(const log_header& h)
     {
-      if(prefix == prefix::none)
-        return;
+      t = h.type;
 
-      dev.dev_stream() << "[";
-      switch(h.severity)
+      if(t == type::header)
       {
-      case verbose3:
-        dev.dev_stream() << "VERB3";
-        break;
-      case verbose2:
-        dev.dev_stream() << "VERB2";
-        break;
-      case verbose:
-        dev.dev_stream() << "VERB";
-        break;
-      case debug:
-        dev.dev_stream() << "DEBUG";
-        break;
-      case info:
-        dev.dev_stream() << "INFO";
-        break;
-      case warn:
-        dev.dev_stream() << "WARN";
-        break;
-      case error:
-        dev.dev_stream() << "ERR";
-        break;
-      case fatal:
-        dev.dev_stream() << "FATAL";
-        break;
+        dev.dev_stream() << std::endl;
       }
-
-      typedef std::chrono::high_resolution_clock clock;
-      typedef std::chrono::milliseconds milliseconds;
-
-      if(prefix == prefix::timestamp || prefix == prefix::extended)
+      else if(t == type::block_begin)
       {
-        time_t rawtime;
-        struct tm * timeinfo;
-        char buffer [80];
-        time ( &rawtime );
-        timeinfo = localtime ( &rawtime );
-        strftime (buffer,80,"%Y-%m-%d %X",timeinfo);
-        dev.dev_stream() << " " << buffer;
+        dev.dev_stream() << std::endl;
+        dev.dev_stream() << "=======================================================" << std::endl;
       }
-
-      if(prefix == prefix::extended)
+      else if(t == type::block_end)
       {
-        dev.dev_stream() << " " << h.file << ":" << h.loc << " - " << h.function;
-        if(h.tag.length() > 0)
-          dev.dev_stream() << " (" << h.tag << ")";
+        dev.dev_stream() << "=======================================================" << std::endl << std::endl;
       }
+      else if(t == type::log)
+      {
+        if(prefix == prefix::none)
+          return;
 
-      dev.dev_stream() << "] ";
+        dev.dev_stream() << "[";
+        switch(h.severity)
+        {
+        case verbose3:
+          dev.dev_stream() << "VERB3";
+          break;
+        case verbose2:
+          dev.dev_stream() << "VERB2";
+          break;
+        case verbose:
+          dev.dev_stream() << "VERB";
+          break;
+        case debug:
+          dev.dev_stream() << "DEBUG";
+          break;
+        case info:
+          dev.dev_stream() << "INFO";
+          break;
+        case warn:
+          dev.dev_stream() << "WARN";
+          break;
+        case error:
+          dev.dev_stream() << "ERR";
+          break;
+        case fatal:
+          dev.dev_stream() << "FATAL";
+          break;
+        }
+
+        //typedef std::chrono::high_resolution_clock clock;
+        //typedef std::chrono::milliseconds milliseconds;
+
+        if(prefix == prefix::timestamp || prefix == prefix::extended)
+        {
+          time_t rawtime;
+          struct tm * timeinfo;
+          char buffer [80];
+          time ( &rawtime );
+          timeinfo = localtime ( &rawtime );
+          strftime (buffer,80,"%Y-%m-%d %X",timeinfo);
+          dev.dev_stream() << " " << buffer;
+        }
+
+        if(prefix == prefix::extended)
+        {
+          dev.dev_stream() << " " << h.file << ":" << h.loc << " - " << h.function;
+          if(h.tag.length() > 0)
+            dev.dev_stream() << " (" << h.tag << ")";
+        }
+
+        dev.dev_stream() << "] ";
+      }
     }
 
     void log(const std::string& s) { dev.write(s); }
     void end_log()
     {
-      dev.dev_stream() << std::endl;
+      if(t == type::log)
+      {
+        dev.dev_stream() << std::endl;
+      }
+      else if(t == type::header)
+      {
+        dev.dev_stream() << std::endl;
+        dev.dev_stream() << "-------------------------------------------------------" << std::endl;
+      }
+      else if(t == type::block_begin)
+      {
+        dev.dev_stream() << std::endl;
+        dev.dev_stream() << "=======================================================" << std::endl;
+      }
       dev.flush();
     }
 
     Device dev;
     prefix::text_prefix prefix;
+    type::log_type t;
   };
 
   struct dispatcher
