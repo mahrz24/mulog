@@ -9,7 +9,7 @@ int main(int argc, char *argv[])
 
   mulog::core::get().set_min_severity(mulog::verbose);
   mulog::core::get().add_transformer<mulog::default_transformer,
-    mulog::console_device>(mulog::prefix::severity);
+    mulog::console_device>(mulog::prefix::none);
   mulog::core::get().add_transformer<mulog::default_transformer,
     mulog::file_device>(mulog::prefix::extended, "log.txt");
 
