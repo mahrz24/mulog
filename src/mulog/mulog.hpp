@@ -69,9 +69,8 @@
 #define MU_BOLDWHITE   "\033[1m\033[37m"      /* Bold White */
 
 // TODO:
-// * Add additional transformer types (vector<double>, vector<int>, matrices)
+// * Add additional transformer types (matrices)
 // * Add dispatcher transformers (Eigen -> vector<vector<>> and so on)
-// * Add formatting types
 // * HTML transformer + d3.js visuals
 // * More filters
 // * TCLAP compability for filters/min_severity and file output
@@ -217,6 +216,8 @@ namespace mulog
     void write(const std::string& s) { std::cout << s; }
     std::ostream& dev_stream() { return std::cout; }
     void flush() {}
+
+    // Does the device support terminal colos?
     bool can_colors() { return true; }
   };
 
@@ -240,8 +241,9 @@ namespace mulog
     virtual void begin_log(const log_header& h) = 0;
     virtual void end_log() = 0;
     virtual void log(const std::string& s) = 0;
-    // Log vectors
+    // Log general vectors
     virtual void log(const std::vector<std::string>& s) = 0;
+    // Log numeric data
     // Log special characters
     virtual void log_endl() = 0;
     virtual void format_change() = 0;
