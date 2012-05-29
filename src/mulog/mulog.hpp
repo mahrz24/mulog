@@ -114,7 +114,8 @@ namespace mulog
     blue,
     yellow,
     cyan,
-    magenta
+    magenta,
+    term,
   };
 
   namespace format
@@ -131,7 +132,10 @@ namespace mulog
       yellow,
       cyan,
       magenta,
-      black
+      black,
+      term,
+      data,
+      data_end
     };
   }
 
@@ -236,7 +240,8 @@ namespace mulog
 
   struct transformer
   {
-    transformer() : row_vectors(true), text_color(black), bold(false) {};
+    transformer() : row_vectors(true), text_color(black), bold(false),
+    data(false) {};
 
     virtual void begin_log(const log_header& h) = 0;
     virtual void end_log() = 0;
@@ -288,28 +293,37 @@ namespace mulog
         case format::cyan:
           text_color = cyan;
           break;
+        case format::term:
+          text_color = term;
+          break;
         case format::magenta:
           text_color = magenta;
+          break;
+        case format::data:
+          data = true;
+          break;
+        case format::data_end:
+          data = false;
           break;
       }
       format_change();
     }
 
     template<typename T>
-    void log(const T& data)
+    void log(const T& log_data)
     {
       // Default conversion of logging data
       std::stringstream s;
-      s << data;
+      s << log_data;
       log(s.str());
     }
 
     template<typename T>
-    void log(const std::vector<T>& data)
+    void log(const std::vector<T>& log_data)
     {
       std::vector<std::string> v;
       // Default conversion of logging data
-      for(const T& x : data)
+      for(const T& x : log_data)
       {
         std::stringstream s;
         s << x;
@@ -321,6 +335,7 @@ namespace mulog
     color text_color;
     bool bold;
     bool row_vectors;
+    bool data;
   };
 
   typedef std::list<std::shared_ptr<transformer>> transformer_list;
@@ -442,6 +457,9 @@ namespace mulog
         {
           switch(text_color)
           {
+            case term:
+              std::cout << MU_RESET;
+              break;
             case black:
               std::cout << MU_BLACK;
               break;
@@ -486,7 +504,8 @@ namespace mulog
     {
       if(dev.can_colors())
       {
-        std::cout << MU_RESET;
+        this->dev.dev_stream() << MU_RESET;
+        text_color = term;
       }
 
       if(t == type::log)
@@ -509,6 +528,74 @@ namespace mulog
     Device dev;
     prefix::text_prefix prefix;
     type::log_type t;
+  };
+
+  template<typename Device, typename ... DeviceParams>
+  struct data_transformer : public default_transformer<Device, mulog::prefix::text_prefix, DeviceParams ...>
+  {
+    data_transformer(DeviceParams&... params) :
+      active(false),
+      default_transformer<Device, mulog::prefix::text_prefix, DeviceParams ...>(mulog::prefix::none, params ...) {}
+
+    void begin_log(const log_header& h)
+    {
+      active = false;
+    }
+
+    void log_endl()
+    {
+      if(!this->data)
+        return;
+      this->dev.dev_stream() << std::endl;
+    }
+
+    void log(const std::string& s)
+    {
+      if(!this->data)
+        return;
+
+      active = true;
+      this->dev.write(s);
+    }
+
+    void format_change()
+    {
+      if(!this->data)
+        return;
+      default_transformer<Device, mulog::prefix::text_prefix, DeviceParams ...>::format_change();
+    }
+
+    void log(const std::vector<std::string>& s)
+    {
+      if(!this->data)
+        return;
+
+      active = true;
+
+      for(std::string e : s)
+      {
+        this->dev.write(e);
+        if(this->row_vectors)
+          this->dev.write(" ");
+        else
+          this->dev.write("\n");
+      }
+    }
+
+    void end_log()
+    {
+      if(active)
+      {
+        if(this->dev.can_colors())
+        {
+          this->dev.dev_stream() << MU_RESET;
+        }
+        this->dev.dev_stream() << std::endl;
+        this->dev.flush();
+      }
+    }
+
+    bool active;
   };
 
   struct dispatcher

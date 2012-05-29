@@ -12,6 +12,8 @@ int main(int argc, char *argv[])
     mulog::console_device>(mulog::prefix::none);
   mulog::core::get().add_transformer<mulog::default_transformer,
     mulog::file_device>(mulog::prefix::extended, "log.txt");
+  mulog::core::get().add_transformer<mulog::data_transformer,
+    mulog::file_device>("data.txt");
 
   //mulog::core::get().add_filter(mulog::filters::tag(R"(core.*)"));
 
@@ -33,6 +35,8 @@ int main(int argc, char *argv[])
        << mulog::format::column << std::vector<int>({1,2,3})
        << mulog::format::normal << mulog::format::green
        << mulog::format::row << std::vector<int>({1,2,3});
+
+  INFO << mulog::format::data << 5 << mulog::format::data_end;
 
   BLOCK_END;
 
